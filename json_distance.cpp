@@ -117,13 +117,13 @@ int main(int argc, char** argv) {
 
 
   if (output_name.size() > 5) {
-    if (output_name.substr(output_name.size() - 5, 5) != ".html") {
-      std::cout << output_name << " is not a valid .html file. Quitting..." << std::endl;
+    if (output_name.substr(output_name.size() - 5, 5) != ".json") {
+      std::cout << output_name << " is not a valid .json file. Quitting..." << std::endl;
       exit(3);
     }
   }
   else {
-    std::cout << output_name << " is not a valid .html file. Quitting..." << std::endl;
+    std::cout << output_name << " is not a valid .json file. Quitting..." << std::endl;
     exit(33);
   }
 
@@ -144,70 +144,198 @@ int main(int argc, char** argv) {
   jsoncons::json gps_records_distance(jsoncons::json::an_array);
 
 
+  if (gps_records_1.type() == 2) {        //array-style
+    for (size_t i = 0; i < gps_records_1.size(); ++i) {
+      try {
+        double distance = 0.0;
+        size_t first = 0, last = 0;
+        double input_timestamp, first_timestamp = 0.0, last_timestamp = 0.0, interpolated_timestamp;
+        double input_lat, input_lon, input_dlat, input_dlon,
+          first_lat, first_lon, first_dlat, first_dlon,
+          last_lat, last_lon, last_dlat, last_dlon,
+          interpolated_lat, interpolated_lon, interpolated_dlat, interpolated_dlon;
 
-  for (size_t i = 0; i < gps_records_1.size(); ++i) {
-    double distance = 0.0;
-    size_t first = 0, last = 0;
-    double input_timestamp, first_timestamp = 0.0, last_timestamp = 0.0, interpolated_timestamp;
-    double input_lat, input_lon, input_dlat, input_dlon,
-      first_lat, first_lon, first_dlat, first_dlon,
-      last_lat, last_lon, last_dlat, last_dlon,
-      interpolated_lat, interpolated_lon, interpolated_dlat, interpolated_dlon;
+        jsoncons::json input_gnss_coordinates;
+        input_lat = gps_records_1[i].has_member("lat") ? gps_records_1[i]["lat"].as<double>() : 90.0;
+        input_lon = gps_records_1[i].has_member("lon") ? gps_records_1[i]["lon"].as<double>() : 90.0;
+        input_timestamp = gps_records_1[i].has_member("timestamp") ? gps_records_1[i]["timestamp"].as<double>() : 0.0;
+        input_gnss_coordinates["lat"] = input_lat;
+        input_gnss_coordinates["lon"] = input_lon;
+        input_gnss_coordinates["timestamp"] = input_timestamp;
 
-    jsoncons::json input_gnss_coordinates;
-    input_lat = gps_records_1[i].has_member("lat") ? gps_records_1[i]["lat"].as<double>() : 90.0;
-    input_lon = gps_records_1[i].has_member("lon") ? gps_records_1[i]["lon"].as<double>() : 90.0;
-    input_timestamp = gps_records_1[i].has_member("timestamp") ? gps_records_1[i]["timestamp"].as<double>() : 0.0;
-    input_gnss_coordinates["lat"] = input_lat;
-    input_gnss_coordinates["lon"] = input_lon;
-    input_gnss_coordinates["timestamp"] = input_timestamp;
+        input_dlon = GEODESIC_DEG_TO_M*cos(input_lat*DEG_TO_RAD)*input_lon;
+        input_dlat = GEODESIC_DEG_TO_M*input_lat;
 
-    input_dlon = GEODESIC_DEG_TO_M*cos(input_lat*DEG_TO_RAD)*input_lon;
-    input_dlat = GEODESIC_DEG_TO_M*input_lat;
+        double temp_timestamp;
+        if (gps_records_2.type() == 2) {             //array-style
+          for (size_t j = 0; j < gps_records_2.size(); ++j) {
+            temp_timestamp = gps_records_2[j].has_member("timestamp") ? gps_records_2[j]["timestamp"].as<double>() : 0.0;
+            if (((temp_timestamp - input_timestamp) <= 0.) && temp_timestamp >= first_timestamp) first_timestamp = temp_timestamp, first = j;
+            if (((temp_timestamp - input_timestamp) >= 0.) && temp_timestamp <= last_timestamp) last_timestamp = temp_timestamp, last = j;
+          }
+          first_lat = gps_records_2[first].has_member("lat") ? gps_records_2[first]["lat"].as<double>() : 90.0;
+          first_lon = gps_records_2[first].has_member("lon") ? gps_records_2[first]["lon"].as<double>() : 90.0;
+          last_lat = gps_records_2[last].has_member("lat") ? gps_records_2[last]["lat"].as<double>() : 90.0;
+          last_lon = gps_records_2[last].has_member("lon") ? gps_records_2[last]["lon"].as<double>() : 90.0;
+        }
+        else if (gps_records_2.type() == 1) {        //object-style
+          size_t j = 0;
+          for (auto rec2 = gps_records_2.begin_members(); rec2 != gps_records_2.end_members(); ++rec2, ++j) {
+            temp_timestamp = rec2->value().has_member("timestamp") ? rec2->value()["timestamp"].as<double>() : 0.0;
+            if (((temp_timestamp - input_timestamp) <= 0.) && temp_timestamp >= first_timestamp) first_timestamp = temp_timestamp, first = j;
+            if (((temp_timestamp - input_timestamp) >= 0.) && temp_timestamp <= last_timestamp) last_timestamp = temp_timestamp, last = j;
+          }
+          j = 0;
+          for (auto rec2 = gps_records_2.begin_members(); rec2 != gps_records_2.end_members(); ++rec2, ++j) {
+            if (j == first) {
+              first_lat = rec2->value().has_member("lat") ? rec2->value()["lat"].as<double>() : 90.0;
+              first_lon = rec2->value().has_member("lon") ? rec2->value()["lon"].as<double>() : 90.0;
+              break;
+            }
+          }
+          j = 0;
+          for (auto rec2 = gps_records_2.begin_members(); rec2 != gps_records_2.end_members(); ++rec2, ++j) {
+            if (j == last) {
+              last_lat = rec2->value().has_member("lat") ? rec2->value()["lat"].as<double>() : 90.0;
+              last_lon = rec2->value().has_member("lon") ? rec2->value()["lon"].as<double>() : 90.0;
+              break;
+            }
+          }
+        }
 
-    double temp_timestamp;
-    for (size_t j = 0; j < gps_records_2.size(); ++j) {
-      temp_timestamp = gps_records_2[j].has_member("timestamp") ? gps_records_2[j]["timestamp"].as<double>() : 0.0;
-      if (((temp_timestamp - input_timestamp) <= 0.) && temp_timestamp >= first_timestamp) first_timestamp = temp_timestamp, first = j;
-      if (((temp_timestamp - input_timestamp) >= 0.) && temp_timestamp <= last_timestamp) last_timestamp = temp_timestamp, last = j;
+        first_dlon = GEODESIC_DEG_TO_M*cos(first_lat*DEG_TO_RAD)*first_lon;
+        first_dlat = GEODESIC_DEG_TO_M*first_lat;
+        last_dlon = GEODESIC_DEG_TO_M*cos(last_lat*DEG_TO_RAD)*last_lon;
+        last_dlat = GEODESIC_DEG_TO_M*last_lat;
+
+        interpolated_timestamp = input_timestamp;
+        interpolated_dlat = ((interpolated_timestamp - first_timestamp) / (last_timestamp - first_timestamp)) * last_dlat - ((interpolated_timestamp - last_timestamp) / (last_timestamp - first_timestamp)) * first_dlat;
+        interpolated_dlon = ((interpolated_timestamp - first_timestamp) / (last_timestamp - first_timestamp)) * last_dlon - ((interpolated_timestamp - last_timestamp) / (last_timestamp - first_timestamp)) * first_dlon;
+        interpolated_lat = interpolated_dlat / GEODESIC_DEG_TO_M;
+        interpolated_lon = interpolated_dlon / (GEODESIC_DEG_TO_M*cos(interpolated_lat*DEG_TO_RAD));
+
+        distance = sqrt((interpolated_dlat - input_dlat)*(interpolated_dlat - input_dlat) + (interpolated_dlon - input_dlon)*(interpolated_dlon - input_dlon));
+
+        jsoncons::json distance_from_gnss_coordinates;
+        distance_from_gnss_coordinates["lat1"] = first_lat;
+        distance_from_gnss_coordinates["lon1"] = first_lon;
+        distance_from_gnss_coordinates["timestamp1"] = first_timestamp;
+        distance_from_gnss_coordinates["lat2"] = last_lat;
+        distance_from_gnss_coordinates["lon2"] = last_lon;
+        distance_from_gnss_coordinates["timestamp2"] = last_timestamp;
+        distance_from_gnss_coordinates["int_lat"] = interpolated_lat;
+        distance_from_gnss_coordinates["int_lon"] = interpolated_lon;
+        distance_from_gnss_coordinates["int_timestamp"] = interpolated_timestamp;
+
+        jsoncons::json final_record;
+        final_record["input_gnss_coordinate"] = std::move(input_gnss_coordinates);
+        final_record["distance_from_gnss_coordinates"] = std::move(distance_from_gnss_coordinates);
+        final_record["distance"] = distance;
+
+        gps_records_distance.add(final_record);
+      }
+      catch (const std::exception& e) {
+        std::cerr << e.what() << std::endl;
+      }
     }
-
-
-    jsoncons::json distance_from_gnss_coordinates;
-    first_lat = gps_records_2[first].has_member("lat") ? gps_records_2[first]["lat"].as<double>() : 90.0;
-    first_lon = gps_records_2[first].has_member("lon") ? gps_records_2[first]["lon"].as<double>() : 90.0;
-    last_lat = gps_records_2[last].has_member("lat") ? gps_records_2[last]["lat"].as<double>() : 90.0;
-    last_lon = gps_records_2[last].has_member("lon") ? gps_records_2[last]["lon"].as<double>() : 90.0;
-    first_dlon = GEODESIC_DEG_TO_M*cos(first_lat*DEG_TO_RAD)*first_lon;
-    first_dlat = GEODESIC_DEG_TO_M*first_lat;
-    last_dlon = GEODESIC_DEG_TO_M*cos(last_lat*DEG_TO_RAD)*last_lon;
-    last_dlat = GEODESIC_DEG_TO_M*last_lat;
-
-    interpolated_timestamp = input_timestamp;
-    interpolated_dlat = ((interpolated_timestamp - first_timestamp) / (last_timestamp - first_timestamp)) * last_dlat - ((interpolated_timestamp - last_timestamp) / (last_timestamp - first_timestamp)) * first_dlat;
-    interpolated_dlon = ((interpolated_timestamp - first_timestamp) / (last_timestamp - first_timestamp)) * last_dlon - ((interpolated_timestamp - last_timestamp) / (last_timestamp - first_timestamp)) * first_dlon;
-    interpolated_lat = interpolated_dlat / GEODESIC_DEG_TO_M;
-    interpolated_lon = interpolated_dlon / (GEODESIC_DEG_TO_M*cos(interpolated_lat*DEG_TO_RAD));
-
-    distance = sqrt((interpolated_dlat - input_dlat)*(interpolated_dlat - input_dlat) + (interpolated_dlon - input_dlon)*(interpolated_dlon - input_dlon));
-
-    distance_from_gnss_coordinates["lat1"] = first_lat;
-    distance_from_gnss_coordinates["lon1"] = first_lon;
-    distance_from_gnss_coordinates["timestamp1"] = first_timestamp;
-    distance_from_gnss_coordinates["lat2"] = last_lat;
-    distance_from_gnss_coordinates["lon2"] = last_lon;
-    distance_from_gnss_coordinates["timestamp2"] = last_timestamp;
-    distance_from_gnss_coordinates["int_lat"] = interpolated_lat;
-    distance_from_gnss_coordinates["int_lon"] = interpolated_lon;
-    distance_from_gnss_coordinates["int_timestamp"] = interpolated_timestamp;
-
-    jsoncons::json final_record;
-    final_record["input_gnss_coordinate"] = std::move(input_gnss_coordinates);
-    final_record["distance_from_gnss_coordinates"] = std::move(distance_from_gnss_coordinates);
-    final_record["distance"] = distance;
-
-    gps_records_distance.add(final_record);
   }
+  else if (gps_records_1.type() == 1) {                  //object-style
+    int i = 0;
+    for (auto rec = gps_records_1.begin_members(); rec != gps_records_1.end_members(); ++rec, ++i) {
+      try {
+        double distance = 0.0;
+        size_t first = 0, last = 0;
+        double input_timestamp, first_timestamp = 0.0, last_timestamp = 0.0, interpolated_timestamp;
+        double input_lat, input_lon, input_dlat, input_dlon,
+          first_lat, first_lon, first_dlat, first_dlon,
+          last_lat, last_lon, last_dlat, last_dlon,
+          interpolated_lat, interpolated_lon, interpolated_dlat, interpolated_dlon;
+
+        jsoncons::json input_gnss_coordinates;
+        input_lat = rec->value().has_member("lat") ? rec->value()["lat"].as<double>() : 90.0;
+        input_lon = rec->value().has_member("lon") ? rec->value()["lon"].as<double>() : 90.0;
+        input_timestamp = rec->value().has_member("timestamp") ? rec->value()["timestamp"].as<double>() : 0.0;
+        input_gnss_coordinates["lat"] = input_lat;
+        input_gnss_coordinates["lon"] = input_lon;
+        input_gnss_coordinates["timestamp"] = input_timestamp;
+
+        input_dlon = GEODESIC_DEG_TO_M*cos(input_lat*DEG_TO_RAD)*input_lon;
+        input_dlat = GEODESIC_DEG_TO_M*input_lat;
+
+        double temp_timestamp;
+        if (gps_records_2.type() == 2) {             //array-style
+          for (size_t j = 0; j < gps_records_2.size(); ++j) {
+            temp_timestamp = gps_records_2[j].has_member("timestamp") ? gps_records_2[j]["timestamp"].as<double>() : 0.0;
+            if (((temp_timestamp - input_timestamp) <= 0.) && temp_timestamp >= first_timestamp) first_timestamp = temp_timestamp, first = j;
+            if (((temp_timestamp - input_timestamp) >= 0.) && temp_timestamp <= last_timestamp) last_timestamp = temp_timestamp, last = j;
+          }
+          first_lat = gps_records_2[first].has_member("lat") ? gps_records_2[first]["lat"].as<double>() : 90.0;
+          first_lon = gps_records_2[first].has_member("lon") ? gps_records_2[first]["lon"].as<double>() : 90.0;
+          last_lat = gps_records_2[last].has_member("lat") ? gps_records_2[last]["lat"].as<double>() : 90.0;
+          last_lon = gps_records_2[last].has_member("lon") ? gps_records_2[last]["lon"].as<double>() : 90.0;
+        }
+        else if (gps_records_2.type() == 1) {        //object-style
+          size_t j = 0;
+          for (auto rec2 = gps_records_2.begin_members(); rec2 != gps_records_2.end_members(); ++rec2, ++j) {
+            temp_timestamp = rec2->value().has_member("timestamp") ? rec2->value()["timestamp"].as<double>() : 0.0;
+            if (((temp_timestamp - input_timestamp) <= 0.) && temp_timestamp >= first_timestamp) first_timestamp = temp_timestamp, first = j;
+            if (((temp_timestamp - input_timestamp) >= 0.) && temp_timestamp <= last_timestamp) last_timestamp = temp_timestamp, last = j;
+          }
+          j = 0;
+          for (auto rec2 = gps_records_2.begin_members(); rec2 != gps_records_2.end_members(); ++rec2, ++j) {
+            if (j == first) {
+              first_lat = rec2->value().has_member("lat") ? rec2->value()["lat"].as<double>() : 90.0;
+              first_lon = rec2->value().has_member("lon") ? rec2->value()["lon"].as<double>() : 90.0;
+              break;
+            }
+          }
+          j = 0;
+          for (auto rec2 = gps_records_2.begin_members(); rec2 != gps_records_2.end_members(); ++rec2, ++j) {
+            if (j == last) {
+              last_lat = rec2->value().has_member("lat") ? rec2->value()["lat"].as<double>() : 90.0;
+              last_lon = rec2->value().has_member("lon") ? rec2->value()["lon"].as<double>() : 90.0;
+              break;
+            }
+          }
+        }
+
+        first_dlon = GEODESIC_DEG_TO_M*cos(first_lat*DEG_TO_RAD)*first_lon;
+        first_dlat = GEODESIC_DEG_TO_M*first_lat;
+        last_dlon = GEODESIC_DEG_TO_M*cos(last_lat*DEG_TO_RAD)*last_lon;
+        last_dlat = GEODESIC_DEG_TO_M*last_lat;
+
+        interpolated_timestamp = input_timestamp;
+        interpolated_dlat = ((interpolated_timestamp - first_timestamp) / (last_timestamp - first_timestamp)) * last_dlat - ((interpolated_timestamp - last_timestamp) / (last_timestamp - first_timestamp)) * first_dlat;
+        interpolated_dlon = ((interpolated_timestamp - first_timestamp) / (last_timestamp - first_timestamp)) * last_dlon - ((interpolated_timestamp - last_timestamp) / (last_timestamp - first_timestamp)) * first_dlon;
+        interpolated_lat = interpolated_dlat / GEODESIC_DEG_TO_M;
+        interpolated_lon = interpolated_dlon / (GEODESIC_DEG_TO_M*cos(interpolated_lat*DEG_TO_RAD));
+
+        distance = sqrt((interpolated_dlat - input_dlat)*(interpolated_dlat - input_dlat) + (interpolated_dlon - input_dlon)*(interpolated_dlon - input_dlon));
+
+        jsoncons::json distance_from_gnss_coordinates;
+        distance_from_gnss_coordinates["lat1"] = first_lat;
+        distance_from_gnss_coordinates["lon1"] = first_lon;
+        distance_from_gnss_coordinates["timestamp1"] = first_timestamp;
+        distance_from_gnss_coordinates["lat2"] = last_lat;
+        distance_from_gnss_coordinates["lon2"] = last_lon;
+        distance_from_gnss_coordinates["timestamp2"] = last_timestamp;
+        distance_from_gnss_coordinates["int_lat"] = interpolated_lat;
+        distance_from_gnss_coordinates["int_lon"] = interpolated_lon;
+        distance_from_gnss_coordinates["int_timestamp"] = interpolated_timestamp;
+
+        jsoncons::json final_record;
+        final_record["input_gnss_coordinate"] = std::move(input_gnss_coordinates);
+        final_record["distance_from_gnss_coordinates"] = std::move(distance_from_gnss_coordinates);
+        final_record["distance"] = distance;
+
+        gps_records_distance.add(final_record);
+      }
+      catch (const std::exception& e) {
+        std::cerr << e.what() << std::endl;
+      }
+    }
+  }
+
 
   //Generating JSON distance file
   output_file << jsoncons::pretty_print(gps_records_distance);
