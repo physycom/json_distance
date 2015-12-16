@@ -23,18 +23,24 @@ along with json_distance. If not, see <http://www.gnu.org/licenses/>.
 #include <stdexcept>
 #include <string>
 #include <cmath>
+
+#include <map>
+
 #include "jsoncons/json.hpp"
 
-#define GEODESIC_DEG_TO_M 111070.4 // conversion [deg] -> [meter]
+#define GEODESIC_DEG_TO_M         111070.4                              // conversion [deg] -> [meter]
 #define RAD_TO_DEG                57.2957795131                         // 180/pi
 #define DEG_TO_RAD                1.745329251e-2                        // pi/180
 
 #define MAJOR_VERSION           1
 #define MINOR_VERSION           0
 
+double mapping(double x, double old_min, double old_max, double new_min, double new_max) {
+  return (x - old_min) / (old_max - old_min)*(new_max - new_min) + new_min;
+};
+
 void usage(char* progname) {
   // Usage
-  std::cout << progname << " v" << MAJOR_VERSION << "." << MINOR_VERSION << std::endl;
   std::cout << "Usage: " << progname << " -i [input1.json] -d [input2.json] -o [output.json]" << std::endl;
   std::cout << "We distinguish between -i and -d because the program is going to calculate distance between points\n"
     << "in [input1.json] from a virtual point in [input2.json] at the same identical timestamp,\n"
@@ -44,6 +50,7 @@ void usage(char* progname) {
 
 int main(int argc, char** argv) {
   std::cout << "********* JSON DISTANCE Calculator *********" << std::endl;
+  std::cout << argv[0] << " v" << MAJOR_VERSION << "." << MINOR_VERSION << std::endl;
 
   std::string input1_name, input2_name, output_name;
   if (argc > 2) { /* Parse arguments, if there are arguments supplied */
@@ -137,13 +144,68 @@ int main(int argc, char** argv) {
 
 
 
-  //Parsing JSON gps databases
+  // Import JSON gps databases
   jsoncons::json gps_records_1 = jsoncons::json::parse_file(input1_name);
   jsoncons::json gps_records_2 = jsoncons::json::parse_file(input2_name);
 
+  std::vector<double> lat1, lon1, t1, lat2, lon2, t2;
+  if (gps_records_1.is_array()) {
+    for (size_t i = 0; i < gps_records_1.size(); i++) {
+      lat1.push_back(gps_records_1[i].has_member("lat") ? gps_records_1[i]["lat"].as<double>() : 90.0);
+      lon1.push_back(gps_records_1[i].has_member("lon") ? gps_records_1[i]["lon"].as<double>() : 90.0);
+      t1.push_back(gps_records_1[i].has_member("timestamp") ? gps_records_1[i]["timestamp"].as<double>() : 90.0);
+    }
+  }
+  else if (gps_records_1.is_object()) {
+    for ( auto it = gps_records_1.begin_members(); it != gps_records_1.end_members(); it++) {
+      lat1.push_back(it->value().has_member("lat") ? it->value()["lat"].as<double>() : 90.0);
+      lon1.push_back(it->value().has_member("lon") ? it->value()["lon"].as<double>() : 90.0);
+        t1.push_back(it->value().has_member("timestamp") ? it->value()["timestamp"].as<double>() : 90.0);
+    }
+  }
+
+  if (gps_records_2.is_array()) {
+    for (size_t i = 0; i < gps_records_2.size(); i++) {
+      lat1.push_back(gps_records_2[i].has_member("lat") ? gps_records_2[i]["lat"].as<double>() : 90.0);
+      lon1.push_back(gps_records_2[i].has_member("lon") ? gps_records_2[i]["lon"].as<double>() : 90.0);
+      t1.push_back(gps_records_2[i].has_member("timestamp") ? gps_records_2[i]["timestamp"].as<double>() : 90.0);
+    }
+  }
+  else if (gps_records_2.is_object()) {
+    for (auto it = gps_records_2.begin_members(); it != gps_records_2.end_members(); it++) {
+      lat2.push_back(it->value().has_member("lat") ? it->value()["lat"].as<double>() : 90.0);
+      lon2.push_back(it->value().has_member("lon") ? it->value()["lon"].as<double>() : 90.0);
+      t2.push_back(it->value().has_member("timestamp") ? it->value()["timestamp"].as<double>() : 90.0);
+    }
+  }
+
+  std::cout << "analyze   : " << lat1.size() << "  " << lon1.size() << "  " << t1.size() << std::endl;
+  std::cout << "benchmark : " << lat2.size() << "  " << lon2.size() << "  " << t2.size() << std::endl;
+
+  std::map<int, std::pair<int, int> > time_map;
+  for (int i = 0; i < t1.size(); i++) {
+    int prev = -1, next = -1;
+    for (int j = 0; j < t2.size(); j++) {
+      if (t1[i] < t2[j] && prev == -1) prev = j-1;
+      if (t1[i] > t2[t2.size() -1 - j] && next == -1) next = t2.size() - j;
+    }
+    if (prev == -1 || next == -1) continue;
+    time_map[i] = std::make_pair(prev, next);
+  }
+  std::cout << "map size    : " << time_map.size() << std::endl;
+  int testindex = 0;
+  std::cout << "map example : " << testindex << " " << time_map[testindex].first << "," << time_map[testindex].second << " - " 
+    << std::fixed << std::setprecision(3) << t1[testindex] << "  " << t2[time_map[testindex].first] << " , " << t2[time_map[testindex].second] << std::endl;
+  testindex = 4000;
+  std::cout << "map example : " << testindex << " " << time_map[testindex].first << "," << time_map[testindex].second << " - " 
+    << std::fixed << std::setprecision(3) << t1[testindex] << "  " << t2[time_map[testindex].first] << " , " << t2[time_map[testindex].second] << std::endl;
+
+  jsoncons::json gps_records_distance;
+
+    
+  /*
+  // Distances comparison
   jsoncons::json gps_records_distance(jsoncons::json::an_array);
-
-
   if (gps_records_1.is_array()) {
     for (size_t i = 0; i < gps_records_1.size(); ++i) {
       try {
@@ -199,7 +261,7 @@ int main(int argc, char** argv) {
           }
           std::cout << "j: " << j << std::endl;
           std::cout << "first: " << first << ", last: " << last << std::endl;
-          std::cin.get();
+//          std::cin.get();
           j = 0;
           for (auto rec2 = gps_records_2.begin_members(); rec2 != gps_records_2.end_members(); ++rec2, ++j) {
             if (j == first) {
@@ -365,7 +427,7 @@ int main(int argc, char** argv) {
       }
     }
   }
-
+  */
 
   //Generating JSON distance file
   output_file << jsoncons::pretty_print(gps_records_distance);
