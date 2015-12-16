@@ -144,7 +144,7 @@ int main(int argc, char** argv) {
   jsoncons::json gps_records_distance(jsoncons::json::an_array);
 
 
-  if (gps_records_1.type() == 2) {        //array-style
+  if (gps_records_1.is_array()) {
     for (size_t i = 0; i < gps_records_1.size(); ++i) {
       try {
         double distance = 0.0;
@@ -166,30 +166,46 @@ int main(int argc, char** argv) {
         input_dlon = GEODESIC_DEG_TO_M*cos(input_lat*DEG_TO_RAD)*input_lon;
         input_dlat = GEODESIC_DEG_TO_M*input_lat;
 
-        double temp_timestamp;
-        if (gps_records_2.type() == 2) {             //array-style
+        double temp_timestamp, time_distance;
+        if (gps_records_2.is_array()) {
+          time_distance = 1e9;
           for (size_t j = 0; j < gps_records_2.size(); ++j) {
-            temp_timestamp = gps_records_2[j].has_member("timestamp") ? gps_records_2[j]["timestamp"].as<double>() : 0.0;
-            if (((temp_timestamp - input_timestamp) <= 0.) && temp_timestamp >= first_timestamp) first_timestamp = temp_timestamp, first = j;
-            if (((temp_timestamp - input_timestamp) >= 0.) && temp_timestamp <= last_timestamp) last_timestamp = temp_timestamp, last = j;
+            temp_timestamp = gps_records_2[j].has_member("timestamp") ? gps_records_2[j]["timestamp"].as<double>() : -1.0;
+            if (temp_timestamp <= input_timestamp && fabs(temp_timestamp - input_timestamp) < time_distance) time_distance = fabs(temp_timestamp - input_timestamp), first_timestamp = temp_timestamp, first = j;
+          }
+          time_distance = 1e9;
+          for (size_t j = gps_records_2.size() - 1; j >= 0; --j) {
+            temp_timestamp = gps_records_2[j].has_member("timestamp") ? gps_records_2[j]["timestamp"].as<double>() : -2.0;
+            if (temp_timestamp >= input_timestamp && fabs(temp_timestamp - input_timestamp) < time_distance) time_distance = fabs(temp_timestamp - input_timestamp), last_timestamp = temp_timestamp, last = j;
           }
           first_lat = gps_records_2[first].has_member("lat") ? gps_records_2[first]["lat"].as<double>() : 90.0;
           first_lon = gps_records_2[first].has_member("lon") ? gps_records_2[first]["lon"].as<double>() : 90.0;
+          first_timestamp = gps_records_2[first].has_member("timestamp") ? gps_records_2[first]["timestamp"].as<double>() : -3.0;
           last_lat = gps_records_2[last].has_member("lat") ? gps_records_2[last]["lat"].as<double>() : 90.0;
           last_lon = gps_records_2[last].has_member("lon") ? gps_records_2[last]["lon"].as<double>() : 90.0;
+          last_timestamp = gps_records_2[last].has_member("timestamp") ? gps_records_2[last]["timestamp"].as<double>() : -4.0;
         }
-        else if (gps_records_2.type() == 1) {        //object-style
-          size_t j = 0;
+        else if (gps_records_2.is_object()) {
+          size_t j;
+          j = 0;
           for (auto rec2 = gps_records_2.begin_members(); rec2 != gps_records_2.end_members(); ++rec2, ++j) {
-            temp_timestamp = rec2->value().has_member("timestamp") ? rec2->value()["timestamp"].as<double>() : 0.0;
-            if (((temp_timestamp - input_timestamp) <= 0.) && temp_timestamp >= first_timestamp) first_timestamp = temp_timestamp, first = j;
-            if (((temp_timestamp - input_timestamp) >= 0.) && temp_timestamp <= last_timestamp) last_timestamp = temp_timestamp, last = j;
+            temp_timestamp = rec2->value().has_member("timestamp") ? rec2->value()["timestamp"].as<double>() : -5.0;
+            if (temp_timestamp <= input_timestamp && fabs(temp_timestamp - input_timestamp) < time_distance) time_distance = fabs(temp_timestamp - input_timestamp), first_timestamp = temp_timestamp, first = j;
           }
+          std::cout << "j: " << j << std::endl;
+          for (auto rec2 = gps_records_2.end_members(); rec2 != gps_records_2.begin_members(); --rec2, --j) {
+            temp_timestamp = rec2->value().has_member("timestamp") ? rec2->value()["timestamp"].as<double>() : -6.0;
+            if (temp_timestamp >= input_timestamp && fabs(temp_timestamp - input_timestamp) < time_distance) time_distance = fabs(temp_timestamp - input_timestamp), last_timestamp = temp_timestamp, last = j;
+          }
+          std::cout << "j: " << j << std::endl;
+          std::cout << "first: " << first << ", last: " << last << std::endl;
+          std::cin.get();
           j = 0;
           for (auto rec2 = gps_records_2.begin_members(); rec2 != gps_records_2.end_members(); ++rec2, ++j) {
             if (j == first) {
               first_lat = rec2->value().has_member("lat") ? rec2->value()["lat"].as<double>() : 90.0;
               first_lon = rec2->value().has_member("lon") ? rec2->value()["lon"].as<double>() : 90.0;
+              first_timestamp = rec2->value().has_member("timestamp") ? rec2->value()["timestamp"].as<double>() : -7.0;
               break;
             }
           }
@@ -198,6 +214,7 @@ int main(int argc, char** argv) {
             if (j == last) {
               last_lat = rec2->value().has_member("lat") ? rec2->value()["lat"].as<double>() : 90.0;
               last_lon = rec2->value().has_member("lon") ? rec2->value()["lon"].as<double>() : 90.0;
+              last_timestamp = rec2->value().has_member("timestamp") ? rec2->value()["timestamp"].as<double>() : -8.0;
               break;
             }
           }
@@ -239,7 +256,7 @@ int main(int argc, char** argv) {
       }
     }
   }
-  else if (gps_records_1.type() == 1) {                  //object-style
+  else if (gps_records_1.is_object()) {
     int i = 0;
     for (auto rec = gps_records_1.begin_members(); rec != gps_records_1.end_members(); ++rec, ++i) {
       try {
@@ -262,30 +279,42 @@ int main(int argc, char** argv) {
         input_dlon = GEODESIC_DEG_TO_M*cos(input_lat*DEG_TO_RAD)*input_lon;
         input_dlat = GEODESIC_DEG_TO_M*input_lat;
 
-        double temp_timestamp;
-        if (gps_records_2.type() == 2) {             //array-style
+        double temp_timestamp, time_distance;
+        if (gps_records_2.is_array()) {
+          time_distance = 1e9;
           for (size_t j = 0; j < gps_records_2.size(); ++j) {
-            temp_timestamp = gps_records_2[j].has_member("timestamp") ? gps_records_2[j]["timestamp"].as<double>() : 0.0;
-            if (((temp_timestamp - input_timestamp) <= 0.) && temp_timestamp >= first_timestamp) first_timestamp = temp_timestamp, first = j;
-            if (((temp_timestamp - input_timestamp) >= 0.) && temp_timestamp <= last_timestamp) last_timestamp = temp_timestamp, last = j;
+            temp_timestamp = gps_records_2[j].has_member("timestamp") ? gps_records_2[j]["timestamp"].as<double>() : -1.0;
+            if (temp_timestamp <= input_timestamp && fabs(temp_timestamp - input_timestamp) < time_distance) time_distance = fabs(temp_timestamp - input_timestamp), first_timestamp = temp_timestamp, first = j;
+          }
+          time_distance = 1e9;
+          for (size_t j = gps_records_2.size() - 1; j >= 0; --j) {
+            temp_timestamp = gps_records_2[j].has_member("timestamp") ? gps_records_2[j]["timestamp"].as<double>() : -2.0;
+            if (temp_timestamp >= input_timestamp && fabs(temp_timestamp - input_timestamp) < time_distance) time_distance = fabs(temp_timestamp - input_timestamp), last_timestamp = temp_timestamp, last = j;
           }
           first_lat = gps_records_2[first].has_member("lat") ? gps_records_2[first]["lat"].as<double>() : 90.0;
           first_lon = gps_records_2[first].has_member("lon") ? gps_records_2[first]["lon"].as<double>() : 90.0;
+          first_timestamp = gps_records_2[first].has_member("timestamp") ? gps_records_2[first]["timestamp"].as<double>() : -3.0;
           last_lat = gps_records_2[last].has_member("lat") ? gps_records_2[last]["lat"].as<double>() : 90.0;
           last_lon = gps_records_2[last].has_member("lon") ? gps_records_2[last]["lon"].as<double>() : 90.0;
+          last_timestamp = gps_records_2[last].has_member("timestamp") ? gps_records_2[last]["timestamp"].as<double>() : -4.0;
         }
-        else if (gps_records_2.type() == 1) {        //object-style
-          size_t j = 0;
+        else if (gps_records_2.is_object()) {
+          size_t j;
+          j = 0;
           for (auto rec2 = gps_records_2.begin_members(); rec2 != gps_records_2.end_members(); ++rec2, ++j) {
-            temp_timestamp = rec2->value().has_member("timestamp") ? rec2->value()["timestamp"].as<double>() : 0.0;
-            if (((temp_timestamp - input_timestamp) <= 0.) && temp_timestamp >= first_timestamp) first_timestamp = temp_timestamp, first = j;
-            if (((temp_timestamp - input_timestamp) >= 0.) && temp_timestamp <= last_timestamp) last_timestamp = temp_timestamp, last = j;
+            temp_timestamp = rec2->value().has_member("timestamp") ? rec2->value()["timestamp"].as<double>() : -5.0;
+            if (temp_timestamp <= input_timestamp && fabs(temp_timestamp - input_timestamp) < time_distance) time_distance = fabs(temp_timestamp - input_timestamp), first_timestamp = temp_timestamp, first = j;
+          }
+          for (auto rec2 = gps_records_2.end_members(); rec2 != gps_records_2.begin_members(); --rec2, --j) {
+            temp_timestamp = rec2->value().has_member("timestamp") ? rec2->value()["timestamp"].as<double>() : -6.0;
+            if (temp_timestamp >= input_timestamp && fabs(temp_timestamp - input_timestamp) < time_distance) time_distance = fabs(temp_timestamp - input_timestamp), last_timestamp = temp_timestamp, last = j;
           }
           j = 0;
           for (auto rec2 = gps_records_2.begin_members(); rec2 != gps_records_2.end_members(); ++rec2, ++j) {
             if (j == first) {
               first_lat = rec2->value().has_member("lat") ? rec2->value()["lat"].as<double>() : 90.0;
               first_lon = rec2->value().has_member("lon") ? rec2->value()["lon"].as<double>() : 90.0;
+              first_timestamp = rec2->value().has_member("timestamp") ? rec2->value()["timestamp"].as<double>() : -7.0;
               break;
             }
           }
@@ -294,6 +323,7 @@ int main(int argc, char** argv) {
             if (j == last) {
               last_lat = rec2->value().has_member("lat") ? rec2->value()["lat"].as<double>() : 90.0;
               last_lon = rec2->value().has_member("lon") ? rec2->value()["lon"].as<double>() : 90.0;
+              last_timestamp = rec2->value().has_member("timestamp") ? rec2->value()["timestamp"].as<double>() : -8.0;
               break;
             }
           }
