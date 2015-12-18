@@ -154,10 +154,10 @@ int main(int argc, char** argv) {
     }
   }
   else if (gps_records_1.is_object()) {
-    for ( auto it = gps_records_1.begin_members(); it != gps_records_1.end_members(); it++) {
+    for (auto it = gps_records_1.begin_members(); it != gps_records_1.end_members(); it++) {
       lat1.push_back(it->value().has_member("lat") ? it->value()["lat"].as<double>() : 90.0);
       lon1.push_back(it->value().has_member("lon") ? it->value()["lon"].as<double>() : 90.0);
-        t1.push_back(it->value().has_member("timestamp") ? it->value()["timestamp"].as<double>() : 0.0);
+      t1.push_back(it->value().has_member("timestamp") ? it->value()["timestamp"].as<double>() : 0.0);
     }
   }
 
@@ -181,8 +181,8 @@ int main(int argc, char** argv) {
   for (size_t i = 0; i < t1.size(); i++) {
     int prev = -1, next = -1;
     for (size_t j = 0; j < t2.size(); j++) {
-      if (t1[i] < t2[j] && prev == -1) prev = j-1;
-      if (t1[i] > t2[t2.size() -1 - j] && next == -1) next = t2.size() - j;
+      if (t1[i] < t2[j] && prev == -1) prev = j - 1;
+      if (t1[i] > t2[t2.size() - 1 - j] && next == -1) next = t2.size() - j;
     }
     if (prev == -1 || next == -1) continue;
     time_map[i] = std::make_pair(prev, next);
@@ -199,7 +199,7 @@ int main(int argc, char** argv) {
     jsoncons::json input_gnss_coordinates, bounding_coordinates;
     double lat_in, lon_in, t_in, dlat_in, dlon_in,
       lat_prev, lon_prev, t_prev, lat_next, lon_next, t_next,
-      lat_int, lon_int, dlat_int, dlon_int, distance; 
+      lat_int, lon_int, dlat_int, dlon_int, distance, dst_lat, dst_lon;
 
     // Doing the math
     lat_in = lat1[it->first];
@@ -221,26 +221,28 @@ int main(int argc, char** argv) {
       lon_int = lon_prev;
     }
     else {
-      lat_int = mapping( t_in, t_prev, t_next, lat_prev, lat_next);
-      lon_int = mapping( t_in, t_prev, t_next, lon_prev, lon_next);
+      lat_int = mapping(t_in, t_prev, t_next, lat_prev, lat_next);
+      lon_int = mapping(t_in, t_prev, t_next, lon_prev, lon_next);
     }
 
     dlat_int = GEODESIC_DEG_TO_M*lat_int;
     dlon_int = GEODESIC_DEG_TO_M*cos(lat_int*DEG_TO_RAD)*lon_int;
 
-    distance = std::sqrt( (dlat_in - dlat_int)*(dlat_in - dlat_int) + (dlon_in - dlon_int)*(dlon_in - dlon_int) );
+    dst_lat = dlat_in - dlat_int;
+    dst_lon = dlon_in - dlon_int;
+    distance = std::sqrt(dst_lat*dst_lat + dst_lon*dst_lon);
 
     // Filling JSON object
-    input_gnss_coordinates["lat"] = lat_in; 
-    input_gnss_coordinates["lon"] = lon_in; 
-    input_gnss_coordinates["timestamp"] = t_in; 
+    input_gnss_coordinates["lat"] = lat_in;
+    input_gnss_coordinates["lon"] = lon_in;
+    input_gnss_coordinates["timestamp"] = t_in;
 
-    bounding_coordinates["prev_lat"] = lat_prev; 
+    bounding_coordinates["prev_lat"] = lat_prev;
     bounding_coordinates["prev_lon"] = lon_prev;
-    bounding_coordinates["prev_timestamp"] = t_prev; 
+    bounding_coordinates["prev_timestamp"] = t_prev;
     bounding_coordinates["next_lat"] = lat_next;
     bounding_coordinates["next_lon"] = lon_next;
-    bounding_coordinates["next_timestamp"] = t_next; 
+    bounding_coordinates["next_timestamp"] = t_next;
     bounding_coordinates["int_lat"] = lat_int;
     bounding_coordinates["int_lon"] = lon_int;
 
@@ -248,12 +250,14 @@ int main(int argc, char** argv) {
     final_record["input_gnss_coordinate"] = std::move(input_gnss_coordinates);
     final_record["distance_from_gnss_coordinates"] = std::move(bounding_coordinates);
     final_record["distance"] = distance;
+    final_record["dst_lat"] = dst_lat;
+    final_record["dst_lon"] = dst_lon;
     final_record["timestamp"] = t_in;
     final_record["counter"] = counter;
 
     gps_records_distance.add(final_record);
   }
-  
+
   //Generating JSON distance file
   output_file << jsoncons::pretty_print(gps_records_distance);
   output_file.close();
