@@ -33,7 +33,7 @@ along with json_distance. If not, see <http://www.gnu.org/licenses/>.
 #define EPSILON                   1e-5
 
 #define MAJOR_VERSION             1
-#define MINOR_VERSION             0
+#define MINOR_VERSION             1
 
 double mapping(double x, double old_min, double old_max, double new_min, double new_max) {
   return (x - old_min) / (old_max - old_min)*(new_max - new_min) + new_min;
@@ -41,10 +41,10 @@ double mapping(double x, double old_min, double old_max, double new_min, double 
 
 void usage(char* progname) {
   // Usage
-  std::cout << std::endl << "\tUsage:\t" << progname << " -i [input1.json] -d [input2.json] -o [output.json]" << std::endl << std::endl;
+  std::cout << std::endl << "\tUsage:\t" << progname << " -i [input1.json] -d [input2.json] -o [output.json] [-a]" << std::endl << std::endl;
   std::cout << "We distinguish between -i and -d because the program is going to calculate distance between points\n"
     << "in [input1.json] from a virtual point in [input2.json] at the same identical timestamp,\n"
-    << "calculated interpolating points inside it" << std::endl;
+    << "calculated interpolating points inside it. An optional -a is used to not filter points in (0,0)" << std::endl;
   exit(1);
 }
 
@@ -52,12 +52,17 @@ int main(int argc, char** argv) {
   std::cout << "JSON DISTANCE Calculator v" << MAJOR_VERSION << "." << MINOR_VERSION << std::endl;
 
   std::string input1_name, input2_name, output_name;
+  bool all = false;
+
   if (argc > 2) { /* Parse arguments, if there are arguments supplied */
     for (int i = 1; i < argc; i++) {
       if ((argv[i][0] == '-') || (argv[i][0] == '/')) {       // switches or options...
         switch (tolower(argv[i][1])) {
         case 'i':
           input1_name = argv[++i];
+          break;
+        case 'a':
+          all = true;
           break;
         case 'd':
           input2_name = argv[++i];
@@ -204,6 +209,7 @@ int main(int argc, char** argv) {
     // Doing the math
     lat_in = lat1[it->first];
     lon_in = lon1[it->first];
+    if (lat_in < EPSILON && lon_in < EPSILON && !all) continue;
     t_in = t1[it->first];
     dlat_in = GEODESIC_DEG_TO_M*lat_in;
     dlon_in = GEODESIC_DEG_TO_M*cos(lat_in*DEG_TO_RAD)*lon_in;
