@@ -168,9 +168,9 @@ int main(int argc, char** argv) {
 
   if (gps_records_2.is_array()) {
     for (size_t i = 0; i < gps_records_2.size(); i++) {
-      lat1.push_back(gps_records_2[i].has_member("lat") ? gps_records_2[i]["lat"].as<double>() : 90.0);
-      lon1.push_back(gps_records_2[i].has_member("lon") ? gps_records_2[i]["lon"].as<double>() : 90.0);
-      t1.push_back(gps_records_2[i].has_member("timestamp") ? gps_records_2[i]["timestamp"].as<double>() : 0.0);
+      lat2.push_back(gps_records_2[i].has_member("lat") ? gps_records_2[i]["lat"].as<double>() : 90.0);
+      lon2.push_back(gps_records_2[i].has_member("lon") ? gps_records_2[i]["lon"].as<double>() : 90.0);
+      t2.push_back(gps_records_2[i].has_member("timestamp") ? gps_records_2[i]["timestamp"].as<double>() : 0.0);
     }
   }
   else if (gps_records_2.is_object()) {
