@@ -204,8 +204,9 @@ int main(int argc, char** argv) {
     jsoncons::json input_gnss_coordinates, bounding_coordinates;
     double lat_in, lon_in, t_in, dlat_in, dlon_in,
       lat_prev, lon_prev, t_prev, lat_next, lon_next, t_next,
-      lat_int, lon_int, dlat_int, dlon_int, distance, dst_lat, dst_lon;
-
+      lat_int, lon_int, dlat_int, dlon_int, distance, dst_lat, dst_lon,
+      delta_lat, delta_lon, delta_norm, delta_norm2, angle;
+    
     // Doing the math
     lat_in = lat1[it->first];
     lon_in = lon1[it->first];
@@ -238,6 +239,15 @@ int main(int argc, char** argv) {
     dst_lon = dlon_in - dlon_int;
     distance = std::sqrt(dst_lat*dst_lat + dst_lon*dst_lon);
 
+    delta_lat = lat_int - lat_in;
+    delta_lon = lon_int - lon_in;
+    delta_norm = std::sqrt(delta_lat*delta_lat + delta_lon*delta_lon);
+    delta_norm2 = fabs(delta_lon);
+    angle = RAD_TO_DEG*acos( delta_lon*fabs(delta_lon) / (delta_norm * delta_norm2) );
+    
+    if (delta_lat < 0) angle = 360.0 - angle;
+//    angle = 90.0 - angle;
+
     // Filling JSON object
     input_gnss_coordinates["lat"] = lat_in;
     input_gnss_coordinates["lon"] = lon_in;
@@ -260,7 +270,8 @@ int main(int argc, char** argv) {
     final_record["dst_lon"] = dst_lon;
     final_record["timestamp"] = t_in;
     final_record["counter"] = counter;
-
+    final_record["angle"] = angle;
+ 
     gps_records_distance.add(final_record);
   }
 
