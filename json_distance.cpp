@@ -23,6 +23,7 @@ along with json_distance. If not, see <http://www.gnu.org/licenses/>.
 #include <stdexcept>
 #include <string>
 #include <cmath>
+#include <limits>
 #include <map>
 
 #include "jsoncons/json.hpp"
@@ -30,26 +31,23 @@ along with json_distance. If not, see <http://www.gnu.org/licenses/>.
 #define GEODESIC_DEG_TO_M         111070.4                              // conversion [deg] -> [meter]
 #define RAD_TO_DEG                57.2957795131                         // 180/pi
 #define DEG_TO_RAD                1.745329251e-2                        // pi/180
-#define EPSILON                   1e-5
 
 #define MAJOR_VERSION             1
-#define MINOR_VERSION             1
+#define MINOR_VERSION             2
 
 double mapping(double x, double old_min, double old_max, double new_min, double new_max) {
   return (x - old_min) / (old_max - old_min)*(new_max - new_min) + new_min;
 };
 
 void usage(char* progname) {
-  // Usage
-  std::cout << std::endl << "\tUsage:\t" << progname << " -i [input1.json] -d [input2.json] -o [output.json] [-a]" << std::endl << std::endl;
-  std::cout << "We distinguish between -i and -d because the program is going to calculate distance between points\n"
-    << "in [input1.json] from a virtual point in [input2.json] at the same identical timestamp,\n"
-    << "calculated interpolating points inside it. An optional -a is used to not filter points in (0,0)" << std::endl;
-  exit(1);
+  std::cerr << "\tUsage:\t" << progname << " -i [input1.json] -d [input2.json] -o [output.json] [-a]" << std::endl;
+  std::cerr << "We distinguish between -i and -d because the program is going to calculate distance between points" << std::endl;
+  std::cerr << "in [input1.json] from a virtual point in [input2.json] at the same identical timestamp," << std::endl;
+  std::cerr << "calculated interpolating points inside it. An optional -a is used to not filter points in (0,0)" << std::endl;
 }
 
 int main(int argc, char** argv) {
-  std::cout << "JSON DISTANCE Calculator v" << MAJOR_VERSION << "." << MINOR_VERSION << std::endl;
+  std::cout << "json_distance v" << MAJOR_VERSION << "." << MINOR_VERSION << std::endl;
 
   std::string input1_name, input2_name, output_name;
   bool all = false;
@@ -71,19 +69,22 @@ int main(int argc, char** argv) {
           output_name = argv[++i];
           break;
         default:    // no match...
-          std::cout << "ERROR: Flag \"" << argv[i] << "\" not recognized. Quitting..." << std::endl;
+          std::cerr << "ERROR: Flag \"" << argv[i] << "\" not recognized. Quitting..." << std::endl;
           usage(argv[0]);
+          exit(-1);
         }
       }
       else {
-        std::cout << "ERROR: Flag \"" << argv[i] << "\" not recognized. Quitting..." << std::endl;
+        std::cerr << "ERROR: Flag \"" << argv[i] << "\" not recognized. Quitting..." << std::endl;
         usage(argv[0]);
+        exit(-2);
       }
     }
   }
   else {
-    std::cout << "ERROR: No flags specified. Read usage and relaunch properly." << std::endl;
+    std::cerr << "ERROR: No flags specified. Read usage and relaunch properly." << std::endl;
     usage(argv[0]);
+    exit(-3);
   }
 
   //Safety checks for file manipulations
@@ -92,56 +93,56 @@ int main(int argc, char** argv) {
 
   if (input1_name.size() > 5) {
     if (input1_name.substr(input1_name.size() - 5, 5) != ".json") {
-      std::cout << input1_name << " is not a valid .json file. Quitting..." << std::endl;
-      exit(2);
+      std::cerr << input1_name << " is not a valid .json file. Quitting..." << std::endl;
+      exit(-4);
     }
   }
   else {
-    std::cout << input1_name << " is not a valid .json file. Quitting..." << std::endl;
-    exit(22);
+    std::cerr << input1_name << " is not a valid .json file. Quitting..." << std::endl;
+    exit(-5);
   }
   input_file.open(input1_name.c_str());
   if (!input_file.is_open()) {
-    std::cout << "FAILED: Input file " << input1_name << " could not be opened. Quitting..." << std::endl;
-    exit(222);
+    std::cerr << "FAILED: Input file " << input1_name << " could not be opened. Quitting..." << std::endl;
+    exit(-6);
   }
-  else { std::cout << "SUCCESS: file " << input1_name << " opened!\n"; }
+  else std::cout << "SUCCESS: file " << input1_name << " opened!\n";
   input_file.close();
 
   if (input2_name.size() > 5) {
     if (input2_name.substr(input2_name.size() - 5, 5) != ".json") {
-      std::cout << input2_name << " is not a valid .json file. Quitting..." << std::endl;
-      exit(2);
+      std::cerr << input2_name << " is not a valid .json file. Quitting..." << std::endl;
+      exit(-7);
     }
   }
   else {
-    std::cout << input2_name << " is not a valid .json file. Quitting..." << std::endl;
-    exit(22);
+    std::cerr << input2_name << " is not a valid .json file. Quitting..." << std::endl;
+    exit(-8);
   }
   input_file.open(input2_name.c_str());
   if (!input_file.is_open()) {
-    std::cout << "FAILED: Input file " << input2_name << " could not be opened. Quitting..." << std::endl;
-    exit(222);
+    std::cerr << "FAILED: Input file " << input2_name << " could not be opened. Quitting..." << std::endl;
+    exit(-9);
   }
-  else { std::cout << "SUCCESS: file " << input2_name << " opened!\n"; }
+  else std::cout << "SUCCESS: file " << input2_name << " opened!\n";
   input_file.close();
 
 
   if (output_name.size() > 5) {
     if (output_name.substr(output_name.size() - 5, 5) != ".json") {
-      std::cout << output_name << " is not a valid .json file. Quitting..." << std::endl;
-      exit(3);
+      std::cerr << output_name << " is not a valid .json file. Quitting..." << std::endl;
+      exit(-10);
     }
   }
   else {
-    std::cout << output_name << " is not a valid .json file. Quitting..." << std::endl;
-    exit(33);
+    std::cerr << output_name << " is not a valid .json file. Quitting..." << std::endl;
+    exit(-11);
   }
 
   output_file.open(output_name.c_str());
   if (!output_file.is_open()) {
-    std::cout << "FAILED: Output file " << output_name << " could not be opened. Quitting..." << std::endl;
-    exit(333);
+    std::cerr << "FAILED: Output file " << output_name << " could not be opened. Quitting..." << std::endl;
+    exit(-12);
   }
   else { std::cout << "SUCCESS: file " << output_name << " opened!" << std::endl; }
 
@@ -210,7 +211,7 @@ int main(int argc, char** argv) {
     // Doing the math
     lat_in = lat1[it->first];
     lon_in = lon1[it->first];
-    if (lat_in < EPSILON && lon_in < EPSILON && !all) continue;
+    if (fabs(lat_in) < std::numeric_limits<double>::epsilon() && fabs(lon_in) < std::numeric_limits<double>::epsilon() && !all) continue;
     t_in = t1[it->first];
     dlat_in = GEODESIC_DEG_TO_M*lat_in;
     dlon_in = GEODESIC_DEG_TO_M*cos(lat_in*DEG_TO_RAD)*lon_in;
@@ -223,7 +224,7 @@ int main(int argc, char** argv) {
     lon_next = lon2[it->second.second];
     t_next = t2[it->second.second];
 
-    if (t_next - t_prev < EPSILON) {         // next and prev may coincide
+    if (fabs(t_next - t_prev) < std::numeric_limits<double>::epsilon()) {         // next and prev may coincide
       lat_int = lat_prev;
       lon_int = lon_prev;
     }
