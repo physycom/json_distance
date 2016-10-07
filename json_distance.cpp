@@ -33,7 +33,7 @@ along with json_distance. If not, see <http://www.gnu.org/licenses/>.
 #define DEG_TO_RAD                1.745329251e-2                        // pi/180
 
 #define MAJOR_VERSION             1
-#define MINOR_VERSION             2
+#define MINOR_VERSION             3
 
 double mapping(double x, double old_min, double old_max, double new_min, double new_max) {
   return (x - old_min) / (old_max - old_min)*(new_max - new_min) + new_min;
@@ -206,7 +206,7 @@ int main(int argc, char** argv) {
     double lat_in, lon_in, t_in, dlat_in, dlon_in,
       lat_prev, lon_prev, t_prev, lat_next, lon_next, t_next,
       lat_int, lon_int, dlat_int, dlon_int, distance, dst_lat, dst_lon,
-      delta_lat, delta_lon, delta_norm, delta_norm2, angle;
+      delta_lat, delta_lon, angle;
     
     // Doing the math
     lat_in = lat1[it->first];
@@ -242,12 +242,9 @@ int main(int argc, char** argv) {
 
     delta_lat = lat_int - lat_in;
     delta_lon = lon_int - lon_in;
-    delta_norm = std::sqrt(delta_lat*delta_lat + delta_lon*delta_lon);
-    delta_norm2 = fabs(delta_lon);
-    angle = RAD_TO_DEG*acos( delta_lon*fabs(delta_lon) / (delta_norm * delta_norm2) );
+    angle = RAD_TO_DEG*atan2(delta_lat , delta_lon );
     
-    if (delta_lat < 0) angle = 360.0 - angle;
-//    angle = 90.0 - angle;
+    if (angle < 0) angle += 360.0;
 
     // Filling JSON object
     input_gnss_coordinates["lat"] = lat_in;
