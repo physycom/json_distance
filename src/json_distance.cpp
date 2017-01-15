@@ -17,8 +17,6 @@ You should have received a copy of the GNU General Public License
 along with json_distance. If not, see <http://www.gnu.org/licenses/>.
 ***************************************************************************/
 
-#define _CRT_SECURE_NO_WARNINGS
-
 #include <fstream>
 #include <stdexcept>
 #include <string>
@@ -187,18 +185,18 @@ int main(int argc, char** argv) {
   for (size_t i = 0; i < t1.size(); i++) {
     int prev = -1, next = -1;
     for (size_t j = 0; j < t2.size(); j++) {
-      if (t1[i] < t2[j] && prev == -1) prev = j - 1;
-      if (t1[i] > t2[t2.size() - 1 - j] && next == -1) next = t2.size() - j;
+      if (t1[i] < t2[j] && prev == -1) prev = int(j) - 1;
+      if (t1[i] > t2[t2.size() - 1 - j] && next == -1) next = int(t2.size() - j);
     }
     if (prev == -1 || next == -1) continue;
-    time_map[i] = std::make_pair(prev, next);
+    time_map[(const int)i] = std::make_pair(prev, next);
   }
 
   std::cout << "Input size       : " << std::setw(6) << lat1.size() << "  " << std::setw(6) << lon1.size() << "  " << std::setw(6) << t1.size() << std::endl;
   std::cout << "Reference size   : " << std::setw(6) << lat2.size() << "  " << std::setw(6) << lon2.size() << "  " << std::setw(6) << t2.size() << std::endl;
   std::cout << "Connected points : " << std::setw(6) << time_map.size() << std::endl;
 
-  jsoncons::json gps_records_distance(jsoncons::json::an_array);
+  jsoncons::json gps_records_distance = jsoncons::json::array();
   size_t counter = 1;
 
   for (auto it = time_map.begin(); it != time_map.end(); it++, counter++) {
