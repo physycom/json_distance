@@ -19,28 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="jsoncons\json.hpp" />
-    <ClInclude Include="jsoncons\json1.hpp" />
-    <ClInclude Include="jsoncons\json2.hpp" />
-    <ClInclude Include="jsoncons\jsoncons.hpp" />
-    <ClInclude Include="jsoncons\jsoncons_config.hpp" />
-    <ClInclude Include="jsoncons\json_deserializer.hpp" />
-    <ClInclude Include="jsoncons\json_exception.hpp" />
-    <ClInclude Include="jsoncons\json_filter.hpp" />
-    <ClInclude Include="jsoncons\json_input_handler.hpp" />
-    <ClInclude Include="jsoncons\json_output_handler.hpp" />
-    <ClInclude Include="jsoncons\json_parser.hpp" />
-    <ClInclude Include="jsoncons\json_parser_category.hpp" />
-    <ClInclude Include="jsoncons\json_reader.hpp" />
-    <ClInclude Include="jsoncons\json_serializer.hpp" />
-    <ClInclude Include="jsoncons\json_structures.hpp" />
-    <ClInclude Include="jsoncons\json_text_error_category.hpp" />
-    <ClInclude Include="jsoncons\json_type_traits.hpp" />
-    <ClInclude Include="jsoncons\output_format.hpp" />
-    <ClInclude Include="jsoncons\parse_error_handler.hpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="src\json_distance.cpp" />
+    <ClCompile Include="..\src\json_distance.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{7614F644-2D5C-452E-A818-FF7F98914DAF}</ProjectGuid>
