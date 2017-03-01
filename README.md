@@ -37,5 +37,4 @@ json_distance.exe -i input1.json input2.json -o output.json
 ```
 where *input1.json* and *input2.json* must be existing and valid .json files, while *output.json* is the name of the output .json with the distance between selected points in the input data.
 
-
-
+More details about file formats is available [here](https://github.com/physycom/file_format_specifications/blob/master/formati_file.md).
