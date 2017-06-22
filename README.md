@@ -26,8 +26,11 @@ This tool has been written in order to benchmark GNSS solution performances with
 
 
 ### Installation
-**make** and a **C++11** compatible compiler are required. Clone the repo and type ``make all``.  
-There's also a **VS2015** solution avalaible.   
+**CMake** and a **C++11** compatible compiler are required. To build the executable, clone the repo and then type  
+```
+mkdir build ; cd build ; cmake .. ; cmake --build . --target install
+```
+With CMake you can also deploy projects for the most common IDEs.  
 Uses [jsoncons](https://github.com/danielaparker/jsoncons) as a git submodule.
 
 
